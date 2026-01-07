@@ -151,7 +151,7 @@ function forceServerHop()
 	--local isVip = game:GetService('RobloxReplicatedStorage').GetServerType:InvokeServer()
 	--if isVip == "VIPServer" then return end
 	local gameId
-	gameId = "8737602449"
+	gameId = "18852429314"
 	local servers = {}
 	local req = httprequest({
 		Url = "https://games.roblox.com/v1/games/" .. gameId .. "/servers/Public?sortOrder=Desc&limit=100"
@@ -442,11 +442,11 @@ end
 
 local function choosePlaceId()
     if vcEnabled and settings.vcServer then
-        return 8943844393
+        return 18852429314
     elseif settings.AlternativeHop then
-        return (math.random() < 0.5) and 8943844393 or 8737602449
+        return (math.random() < 0.5) and 18852429314 or 18852429314
     else
-        return 8737602449
+        return 18852429314
     end
 end
 

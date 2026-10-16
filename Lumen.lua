@@ -158,9 +158,15 @@ local function getGuiParent(gui)
 		end
 		return nil
 	end)
-	if ok and ui then
-		gui.Parent = ui
-		return
+	-- A ScreenGui nested inside another ScreenGui (e.g. RobloxGui) never renders,
+	-- so only accept containers that are not LayerCollectors.
+	if ok and ui and not ui:IsA("LayerCollector") then
+		local okSet = pcall(function()
+			gui.Parent = ui
+		end)
+		if okSet and gui.Parent == ui then
+			return
+		end
 	end
 	local okCore = pcall(function()
 		gui.Parent = game:GetService("CoreGui")

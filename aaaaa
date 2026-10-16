@@ -9,7 +9,7 @@
 		local window = Vanta:CreateWindow({
 			name = "Example",
 			subtitle = "Vanta",
-			sidebarLayout = true,
+			sidebarLayout = false, -- false = tab strip (default) · true = rail down the left
 		})
 
 		local tab = window:CreateTab({ name = "Home", icon = 0 })
@@ -3346,6 +3346,11 @@ createElement = function(kind, container, props)
 		local shell = buildShell(container, props, height, 18)
 		addHover(element, shell)
 
+		-- Buttons read as buttons: centre the label rather than left-aligning it.
+		if not shell.icon then
+			shell.label.TextXAlignment = Enum.TextXAlignment.Center
+		end
+
 		shell.card.ClipsDescendants = true
 		shell.card.Active = true
 
@@ -3412,7 +3417,17 @@ createElement = function(kind, container, props)
 		local shell = buildShell(container, props, height, 76)
 		addHover(element, shell)
 
-		if not minimal then
+		-- Compact rows pack name / track / value onto a single 26px line.
+		local minimalLabelWidth = 96
+		local minimalValueWidth = 34
+		local minimalGap = 10
+
+		if minimal then
+			shell.label.AnchorPoint = Vector2.new(0, 0.5)
+			shell.label.Position = UDim2.new(0, shell.left, 0.5, 0)
+			shell.label.Size = UDim2.fromOffset(minimalLabelWidth, 16)
+			shell.label.TextYAlignment = Enum.TextYAlignment.Center
+		else
 			-- Name and value share the top line; the track sits beneath them.
 			shell.label.Position = UDim2.new(0, shell.left, 0, hasDescription and 9 or 8)
 			shell.label.Size = UDim2.new(1, -(shell.left + 76), 0, 16)
@@ -3426,10 +3441,18 @@ createElement = function(kind, container, props)
 			BackgroundColor3 = theme.SliderTrack,
 			BackgroundTransparency = theme.SliderTrackTransparency,
 			BorderSizePixel = 0,
-			Position = minimal and UDim2.new(0, 13, 0.5, 0)
+			Position = minimal
+					and UDim2.new(0, shell.left + minimalLabelWidth + minimalGap, 0.5, 0)
 				or UDim2.new(0, 13, 0, hasDescription and 46 or 32),
 			AnchorPoint = minimal and Vector2.new(0, 0.5) or Vector2.new(0, 0),
-			Size = UDim2.new(1, -26, 0, 5),
+			Size = minimal
+					and UDim2.new(
+						1,
+						-(shell.left + minimalLabelWidth + minimalGap + minimalValueWidth + minimalGap + 13),
+						0,
+						5
+					)
+				or UDim2.new(1, -26, 0, 5),
 			Parent = shell.card,
 		})
 		corner(track, UDim.new(1, 0))
@@ -3476,25 +3499,26 @@ createElement = function(kind, container, props)
 			end
 		end)
 
-		local valueLabel
-		if not minimal then
-			valueLabel = create("TextLabel", {
-				Name = "Value",
-				BackgroundTransparency = 1,
-				Position = UDim2.new(1, -13 - 60, 0, 9),
-				Size = UDim2.fromOffset(60, 16),
-				FontFace = FONT_MEDIUM,
-				TextColor3 = theme.Text,
-				TextSize = 12,
-				TextXAlignment = Enum.TextXAlignment.Right,
-				Parent = shell.card,
-			})
-			window:_bind("Text", function(color)
-				if valueLabel.Parent then
-					valueLabel.TextColor3 = color
-				end
-			end)
-		end
+		local valueLabel = create("TextLabel", {
+			Name = "Value",
+			BackgroundTransparency = 1,
+			Position = minimal
+					and UDim2.new(1, -(13 + minimalValueWidth), 0.5, 0)
+				or UDim2.new(1, -13 - 60, 0, 9),
+			AnchorPoint = minimal and Vector2.new(0, 0.5) or Vector2.new(0, 0),
+			Size = minimal and UDim2.fromOffset(minimalValueWidth, 16) or UDim2.fromOffset(60, 16),
+			FontFace = FONT_MEDIUM,
+			TextColor3 = theme.Text,
+			TextSize = minimal and 11.5 or 12,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			Parent = shell.card,
+		})
+		window:_bind("Text", function(color)
+			if valueLabel.Parent then
+				valueLabel.TextColor3 = color
+			end
+		end)
 
 		local dragging = false
 

@@ -915,7 +915,7 @@ function Window:_build()
 	}), 0)
 	sheenGradient.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.5, 0.55),
+		NumberSequenceKeypoint.new(0.5, 0.5),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 
@@ -1020,35 +1020,17 @@ function Window:_build()
 		end)
 	end
 
-	self:_createAction(topbar, 1, function(parent)
+	self:_createAction(topbar, 2, function(parent)
 		return glyphMinus(parent, theme.TextDim, 12, 1.6)
 	end, function()
 		self_:ToggleMinimise()
 	end, "Minimise")
 
-	self:_createAction(topbar, 2, function(parent)
+	self:_createAction(topbar, 1, function(parent)
 		return glyphClose(parent, theme.TextDim, 11, 1.6)
 	end, function()
 		self_:Hide()
 	end, "Hide")
-
-	if not self._sidebar then
-		local hairline = create("Frame", {
-			Name = "Hairline",
-			BackgroundColor3 = theme.Divider,
-			BorderSizePixel = 0,
-			Size = UDim2.new(1, -24, 0, 1),
-			Position = UDim2.new(0, 12, 0, TOPBAR_HEIGHT - 1),
-			ZIndex = 3,
-			Parent = main,
-		})
-		self:_bind("Divider", function(color)
-			hairline.BackgroundColor3 = color
-		end)
-		self:_bind("DividerTransparency", function(value)
-			hairline.BackgroundTransparency = value
-		end)
-	end
 
 	-- body places ----------------------------------------------------------
 	local bodyTop = TOPBAR_HEIGHT
@@ -1110,10 +1092,11 @@ function Window:_build()
 			ZIndex = 4,
 			Parent = strip,
 		})
-		padding(tabList, 12, 8, 8, 8)
+		padding(tabList, 0, 0, 0, 20)
 		self._tabList = tabList
 
-		listLayout(tabList, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left)
+		local tabLayout = listLayout(tabList, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left)
+		tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 
 		self._content = create("Frame", {
 			Name = "Content",
@@ -2764,9 +2747,8 @@ local function buildContainer(container, frame, direction, gap)
 	container.gap = gap or GAP
 	container._items = container._items or {}
 
-	local layout = create("UIListLayout", {
-		FillDirection = (direction == "row" or direction == "grid")
-				and Enum.FillDirection.Horizontal
+	create("UIListLayout", {
+		FillDirection = direction == "row" and Enum.FillDirection.Horizontal
 			or Enum.FillDirection.Vertical,
 		Padding = UDim.new(0, container.gap),
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2775,32 +2757,90 @@ local function buildContainer(container, frame, direction, gap)
 		Parent = frame,
 	})
 
-	-- A grid flows elements left to right and wraps, so half-width cards sit two
-	-- to a line while full-width ones get a line of their own.
+	-- A grid packs compact cards two to a line. Rather than rely on wrapping
+	-- (which fights AutomaticSize/ScrollingFrame), it keeps a plain vertical list
+	-- of row frames, each holding one or two cards.
 	if direction == "grid" then
-		layout.Wraps = true
-		if Enum.ItemLineAlignment then
-			layout.ItemLineAlignment = Enum.ItemLineAlignment.Start
+		container._rows = container._rows or {}
+	end
+
+	function container:_layoutGrid()
+		local rows = self._rows
+		local gapPixels = self.gap
+
+		-- Decide which cards share a line: two compact cards per line, anything
+		-- wider gets a line to itself and closes the current line.
+		local lines = {}
+		local openLine
+
+		for _, item in ipairs(self._items) do
+			if item.half and openLine and #lines[openLine] < 2 then
+				table.insert(lines[openLine], item)
+			else
+				table.insert(lines, { item })
+				openLine = item.half and #lines or nil
+			end
+		end
+
+		for index, line in ipairs(lines) do
+			local row = rows[index]
+
+			if not row then
+				local rowFrame = create("Frame", {
+					Name = "GridRow" .. index,
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Size = UDim2.new(1, 0, 0, 0),
+					AutomaticSize = Enum.AutomaticSize.Y,
+					Parent = self.frame,
+				})
+				listLayout(
+					rowFrame,
+					Enum.FillDirection.Horizontal,
+					gapPixels,
+					Enum.HorizontalAlignment.Left
+				)
+				row = { frame = rowFrame }
+				rows[index] = row
+			end
+
+			row.frame.LayoutOrder = index
+
+			for slot, item in ipairs(line) do
+				local itemFrame = item.frame
+
+				if itemFrame.Parent ~= row.frame then
+					itemFrame.Parent = row.frame
+				end
+
+				itemFrame.LayoutOrder = slot
+
+				local autoHeight = itemFrame.AutomaticSize == Enum.AutomaticSize.Y
+					or itemFrame.AutomaticSize == Enum.AutomaticSize.XY
+
+				if item.half then
+					itemFrame.Size = UDim2.new(0.5, -(gapPixels / 2), 0, autoHeight and 0 or item.height)
+				else
+					itemFrame.Size = UDim2.new(1, 0, 0, autoHeight and 0 or item.height)
+				end
+			end
+		end
+
+		-- Retire rows the packing no longer needs. Their cards have all been
+		-- reparented, so the frames are empty by now.
+		for index = #rows, #lines + 1, -1 do
+			local row = rows[index]
+
+			if row then
+				row.frame:Destroy()
+				rows[index] = nil
+			end
 		end
 	end
 
 	function container:_relayout()
 		if self.direction == "grid" then
-			local gapPixels = self.gap
-
-			for _, item in ipairs(self._items) do
-				local autoHeight = item.frame.AutomaticSize == Enum.AutomaticSize.Y
-					or item.frame.AutomaticSize == Enum.AutomaticSize.XY
-
-				if item.half then
-					-- The extra pixel guards against rounding pushing the second
-					-- card onto its own line.
-					item.frame.Size = UDim2.new(0.5, -(gapPixels / 2) - 1, 0, autoHeight and 0 or item.height)
-				else
-					item.frame.Size = UDim2.new(1, 0, 0, autoHeight and 0 or item.height)
-				end
-			end
-
+			self:_layoutGrid()
 			return
 		end
 
@@ -3143,7 +3183,6 @@ local HALF_WIDTH = {
 	button = true,
 	toggle = true,
 	switch = true,
-	slider = true,
 	stat = true,
 }
 
@@ -3369,9 +3408,16 @@ createElement = function(kind, container, props)
 		local maximum = range[2] or 100
 		local increment = props.increment or 1
 		local minimal = props.minimal == true
-		local height = minimal and 26 or (hasDescription and 74 or 58)
+		local height = minimal and 26 or (hasDescription and 74 or 46)
 		local shell = buildShell(container, props, height, 76)
 		addHover(element, shell)
+
+		if not minimal then
+			-- Name and value share the top line; the track sits beneath them.
+			shell.label.Position = UDim2.new(0, shell.left, 0, hasDescription and 9 or 8)
+			shell.label.Size = UDim2.new(1, -(shell.left + 76), 0, 16)
+			shell.label.TextYAlignment = Enum.TextYAlignment.Center
+		end
 
 		element.value = math.clamp(props.value or minimum, minimum, maximum)
 
@@ -3380,7 +3426,8 @@ createElement = function(kind, container, props)
 			BackgroundColor3 = theme.SliderTrack,
 			BackgroundTransparency = theme.SliderTrackTransparency,
 			BorderSizePixel = 0,
-			Position = minimal and UDim2.new(0, 13, 0.5, 0) or UDim2.new(0, 13, 0, 34),
+			Position = minimal and UDim2.new(0, 13, 0.5, 0)
+				or UDim2.new(0, 13, 0, hasDescription and 46 or 32),
 			AnchorPoint = minimal and Vector2.new(0, 0.5) or Vector2.new(0, 0),
 			Size = UDim2.new(1, -26, 0, 5),
 			Parent = shell.card,
@@ -5188,7 +5235,7 @@ createElement = function(kind, container, props)
 		local compact = props.compact == true or container.direction == "row"
 			or container.direction == "grid"
 		local display = props.display == "change" and "change" or "value"
-		local showDelta = not compact
+		local showDelta = true
 		local height = compact and ELEMENT_HEIGHT or (hasDescription and 74 or 64)
 		local shell = buildShell(container, props, height, compact and 78 or 86)
 
@@ -5201,7 +5248,8 @@ createElement = function(kind, container, props)
 		local changeMode = props.changeMode or "percentage"
 		local changeBaseline = props.changeBaseline or "previous"
 
-		-- A compact card has room for one figure: either the value or the change.
+		-- A compact card shows the value on the left and the change on the right;
+		-- `display = "change"` swaps the main figure for the change instead.
 		local changeFigure = compact and display == "change"
 
 		local valueLabel = create("TextLabel", {
@@ -5224,7 +5272,7 @@ createElement = function(kind, container, props)
 				Name = "Delta",
 				BackgroundTransparency = 1,
 				AnchorPoint = Vector2.new(1, 0.5),
-				Position = UDim2.new(1, -13, 0.4, 0),
+				Position = UDim2.new(1, -13, compact and 0.5 or 0.4, 0),
 				Size = UDim2.fromOffset(70, 16),
 				FontFace = FONT_MEDIUM,
 				Text = "",

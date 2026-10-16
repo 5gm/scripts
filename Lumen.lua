@@ -452,7 +452,7 @@ Themes.default = {
 	TabText = Color3.fromRGB(146, 145, 168),
 	TabTextActive = Color3.fromRGB(255, 255, 255),
 	TabFill = Color3.fromRGB(46, 45, 62),
-	TabFillTransparency = 0.25,
+	TabFillTransparency = 0.8,
 	RailWidth = 188,
 
 	-- controls
@@ -815,7 +815,7 @@ function Window:_createAction(parent, order, buildGlyph, onClick, tooltip)
 	end)
 
 	button.MouseEnter:Connect(function()
-		tween(button, 0.15, { BackgroundTransparency = 0.85, BackgroundColor3 = self._theme.Text })
+		tween(button, 0.15, { BackgroundTransparency = 0.82, BackgroundColor3 = self._theme.Accent })
 		for _, child in ipairs(glyph:GetChildren()) do
 			if child:IsA("Frame") then
 				tween(child, 0.15, { BackgroundColor3 = self._theme.TitleText })
@@ -1075,7 +1075,7 @@ function Window:_build()
 
 		local indicator = create("Frame", {
 			Name = "Indicator",
-			BackgroundColor3 = theme.TabFill,
+			BackgroundColor3 = theme.Accent,
 			BackgroundTransparency = theme.TabFillTransparency,
 			BorderSizePixel = 0,
 			Size = UDim2.fromOffset(0, 0),
@@ -1086,7 +1086,8 @@ function Window:_build()
 		corner(indicator, theme.CornerPill)
 		self._stripIndicator = indicator
 
-		self:_bind("TabFill", function(color)
+		-- The active tab is an accent wash, never a grey block.
+		self:_bind("Accent", function(color)
 			indicator.BackgroundColor3 = color
 		end)
 		self:_bind("TabFillTransparency", function(value)
@@ -1230,7 +1231,7 @@ function Window:_buildSidebar()
 
 	local railIndicator = create("Frame", {
 		Name = "RailIndicator",
-		BackgroundColor3 = theme.TabFill,
+		BackgroundColor3 = theme.Accent,
 		BackgroundTransparency = theme.TabFillTransparency,
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 0, RAIL_ITEM_HEIGHT),
@@ -1255,11 +1256,9 @@ function Window:_buildSidebar()
 	corner(accentPip, UDim.new(1, 0))
 	self:_bind("Accent", function(color)
 		accentPip.BackgroundColor3 = color
-	end)
-
-	self:_bind("TabFill", function(color)
 		railIndicator.BackgroundColor3 = color
 	end)
+
 	self:_bind("TabFillTransparency", function(value)
 		railIndicator.BackgroundTransparency = value
 	end)
@@ -2351,8 +2350,8 @@ function Window:Popup(props)
 	for index, box in ipairs(props.boxes or {}) do
 		local row = create("Frame", {
 			Name = "Box" .. index,
-			BackgroundColor3 = theme.SurfaceHover,
-			BackgroundTransparency = 0.35,
+			BackgroundColor3 = theme.Surface:Lerp(theme.Accent, 0.1),
+			BackgroundTransparency = 0.3,
 			BorderSizePixel = 0,
 			Size = UDim2.new(1, 0, 0, box.description and 54 or 40),
 			Parent = shell,
@@ -2477,12 +2476,12 @@ function Window:Popup(props)
 		local style = option.style or "neutral"
 		local fill = style == "primary" and theme.Accent
 			or style == "danger" and theme.Danger
-			or theme.SurfaceHover
+			or theme.Surface
 
 		local button = create("TextButton", {
 			Name = "Option" .. index,
 			BackgroundColor3 = fill,
-			BackgroundTransparency = style == "neutral" and 0.3 or 0,
+			BackgroundTransparency = style == "neutral" and 0.15 or 0,
 			BorderSizePixel = 0,
 			AutoButtonColor = false,
 			Text = "",
@@ -2521,15 +2520,15 @@ function Window:Popup(props)
 			tween(button, 0.14, {
 				BackgroundColor3 = style == "primary" and theme.AccentAlt
 					or style == "danger" and Color3.fromRGB(220, 38, 38)
-					or theme.ElementStroke,
-				BackgroundTransparency = 0,
+					or theme.Surface:Lerp(theme.Accent, 0.35),
+				BackgroundTransparency = style == "neutral" and 0.05 or 0,
 			})
 		end)
 
 		button.MouseLeave:Connect(function()
 			tween(button, 0.18, {
 				BackgroundColor3 = fill,
-				BackgroundTransparency = style == "neutral" and 0.3 or 0,
+				BackgroundTransparency = style == "neutral" and 0.15 or 0,
 			})
 		end)
 
@@ -2713,11 +2712,11 @@ local function deriveFlag(name)
 	return (string.gsub(name, "[^%w]", ""))
 end
 
-local function containerAdd(container, frame, height)
-	local item = { frame = frame, height = height }
+local function containerAdd(container, frame, height, half)
+	local item = { frame = frame, height = height, half = half == true }
 	table.insert(container._items, item)
 
-	if container.direction == "row" then
+	if container.direction == "row" or container.direction == "grid" then
 		container:_relayout()
 	end
 
@@ -2734,7 +2733,7 @@ local function containerRemove(container, item)
 	table.remove(container._items, index)
 	item.frame:Destroy()
 
-	if container.direction == "row" then
+	if container.direction == "row" or container.direction == "grid" then
 		container:_relayout()
 	end
 end
@@ -2754,7 +2753,7 @@ local function containerReorder(container, item, target)
 		entry.frame.LayoutOrder = position
 	end
 
-	if container.direction == "row" then
+	if container.direction == "row" or container.direction == "grid" then
 		container:_relayout()
 	end
 end
@@ -2765,8 +2764,9 @@ local function buildContainer(container, frame, direction, gap)
 	container.gap = gap or GAP
 	container._items = container._items or {}
 
-	create("UIListLayout", {
-		FillDirection = direction == "row" and Enum.FillDirection.Horizontal
+	local layout = create("UIListLayout", {
+		FillDirection = (direction == "row" or direction == "grid")
+				and Enum.FillDirection.Horizontal
 			or Enum.FillDirection.Vertical,
 		Padding = UDim.new(0, container.gap),
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2775,7 +2775,35 @@ local function buildContainer(container, frame, direction, gap)
 		Parent = frame,
 	})
 
+	-- A grid flows elements left to right and wraps, so half-width cards sit two
+	-- to a line while full-width ones get a line of their own.
+	if direction == "grid" then
+		layout.Wraps = true
+		if Enum.ItemLineAlignment then
+			layout.ItemLineAlignment = Enum.ItemLineAlignment.Start
+		end
+	end
+
 	function container:_relayout()
+		if self.direction == "grid" then
+			local gapPixels = self.gap
+
+			for _, item in ipairs(self._items) do
+				local autoHeight = item.frame.AutomaticSize == Enum.AutomaticSize.Y
+					or item.frame.AutomaticSize == Enum.AutomaticSize.XY
+
+				if item.half then
+					-- The extra pixel guards against rounding pushing the second
+					-- card onto its own line.
+					item.frame.Size = UDim2.new(0.5, -(gapPixels / 2) - 1, 0, autoHeight and 0 or item.height)
+				else
+					item.frame.Size = UDim2.new(1, 0, 0, autoHeight and 0 or item.height)
+				end
+			end
+
+			return
+		end
+
 		if self.direction ~= "row" then
 			return
 		end
@@ -2997,20 +3025,32 @@ end
 local function addHover(element, shell)
 	local window = element._window
 
+	-- Hover reads the live theme, so the tint follows whatever accent is set
+	-- instead of a fixed grey.
+	local function paint(on)
+		local theme = window._theme
+		local accent = theme.Accent
+		local speed = on and 0.18 or 0.24
+
+		tween(shell.card, speed, {
+			BackgroundColor3 = on and theme.Surface:Lerp(accent, 0.16) or theme.Surface,
+			BackgroundTransparency = on
+					and math.max(theme.SurfaceTransparency - 0.12, 0)
+				or theme.SurfaceTransparency,
+		})
+
+		tween(shell.stroke, speed, {
+			Color = on and accent or theme.ElementStroke,
+			Transparency = on and 0.25 or theme.ElementStrokeTransparency,
+		})
+	end
+
 	shell.card.MouseEnter:Connect(function()
 		if element._locked then
 			return
 		end
 
-		tween(shell.card, 0.18, {
-			BackgroundColor3 = window._theme.SurfaceHover,
-			BackgroundTransparency = window._theme.SurfaceHoverTransparency,
-		})
-
-		tween(shell.stroke, 0.18, {
-			Color = window._theme.ElementStrokeHover,
-			Transparency = window._theme.ElementStrokeHoverTransparency,
-		})
+		paint(true)
 	end)
 
 	shell.card.MouseLeave:Connect(function()
@@ -3018,15 +3058,7 @@ local function addHover(element, shell)
 			return
 		end
 
-		tween(shell.card, 0.24, {
-			BackgroundColor3 = window._theme.Surface,
-			BackgroundTransparency = window._theme.SurfaceTransparency,
-		})
-
-		tween(shell.stroke, 0.24, {
-			Color = window._theme.ElementStroke,
-			Transparency = window._theme.ElementStrokeTransparency,
-		})
+		paint(false)
 	end)
 end
 
@@ -3034,7 +3066,7 @@ local function attach(element, container, frame, height, props, shell)
 	element._window = container.window
 	element._container = container
 	element._frame = frame
-	element._entry = containerAdd(container, frame, height)
+	element._entry = containerAdd(container, frame, height, props.__half == true)
 	element._locked = false
 
 	local window = container.window
@@ -3106,6 +3138,15 @@ local FULL_WIDTH_ONLY = {
 	section = true,
 }
 
+-- Inside a grid these sit two to a line; everything else spans the full width.
+local HALF_WIDTH = {
+	button = true,
+	toggle = true,
+	switch = true,
+	slider = true,
+	stat = true,
+}
+
 createElement = function(kind, container, props)
 	props = normalizeProps(props)
 
@@ -3119,6 +3160,8 @@ createElement = function(kind, container, props)
 		warn("[Vanta] " .. kind .. " is full width and cannot live inside a row group.")
 		return nil
 	end
+
+	props.__half = container.direction == "grid" and HALF_WIDTH[kind] == true
 
 	local theme = window._theme
 	local hasDescription = props.description ~= nil and props.description ~= ""
@@ -5143,6 +5186,7 @@ createElement = function(kind, container, props)
 	if kind == "stat" then
 		local element = setmetatable({}, Element)
 		local compact = props.compact == true or container.direction == "row"
+			or container.direction == "grid"
 		local display = props.display == "change" and "change" or "value"
 		local showDelta = not compact
 		local height = compact and ELEMENT_HEIGHT or (hasDescription and 74 or 64)
@@ -5819,7 +5863,7 @@ function Tab.new(window, props)
 	padding(page, PAD, PAD, PAD, PAD)
 	self.page = page
 
-	buildContainer(self, page, "column", GAP)
+	buildContainer(self, page, "grid", GAP)
 
 	local slide = Spring.new(0, function(offset)
 		if holder.Parent then

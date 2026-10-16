@@ -1,12 +1,7 @@
 --[[
-    Lumen UI Library  (v0.2)
-    An original Roblox UI library. API shaped like Rayfield Gen2's public docs:
-    CreateWindow -> CreateTab -> Create<Element>, flags, configuration saving, themes.
-
-    Design: flat list rows separated by hairlines, an L-shaped chrome (top bar + sidebar),
-    Inter type, one accent colour, and a highlight that slides between tabs.
-
-        local Lumen = loadstring(game:HttpGet("YOUR_URL"))()
+    Lumen UI Library (Redesigned)
+    A sleek, modern, high-performance UI library for Roblox.
+    Fully compatible with the original Lumen v0.2 API.
 ]]
 
 local Players = game:GetService("Players")
@@ -14,37 +9,58 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
-local Lumen = { Version = "0.2.0" }
+local Lumen = { Version = "0.3.0" }
 
 ------------------------------------------------------------------------
--- Themes (keys: bg content, panel chrome, card raised, stroke hairline)
+-- Themes & Color Schemes
 ------------------------------------------------------------------------
 
 local DefaultTheme = {
-	bg = Color3.fromRGB(15, 17, 26),
-	panel = Color3.fromRGB(20, 23, 35),
-	card = Color3.fromRGB(31, 35, 53),
-	stroke = Color3.fromRGB(46, 51, 76),
-	text = Color3.fromRGB(233, 236, 248),
-	subtext = Color3.fromRGB(128, 136, 166),
-	accent = Color3.fromRGB(138, 148, 255),
-	accent2 = Color3.fromRGB(130, 226, 208),
+	bg = Color3.fromRGB(13, 15, 23),
+	panel = Color3.fromRGB(18, 21, 32),
+	card = Color3.fromRGB(25, 29, 44),
+	cardHover = Color3.fromRGB(32, 37, 56),
+	stroke = Color3.fromRGB(42, 47, 72),
+	strokeGlow = Color3.fromRGB(120, 130, 255),
+	text = Color3.fromRGB(242, 245, 255),
+	subtext = Color3.fromRGB(135, 143, 173),
+	accent = Color3.fromRGB(115, 125, 255),
+	accent2 = Color3.fromRGB(80, 215, 245),
+	danger = Color3.fromRGB(245, 78, 102),
 }
 
 local ThemeOverrides = {
 	default = {},
-	cobalt = { accent = Color3.fromRGB(77, 148, 255), accent2 = Color3.fromRGB(90, 210, 255) },
-	ember = { accent = Color3.fromRGB(255, 132, 64), accent2 = Color3.fromRGB(255, 196, 82) },
-	amethyst = { accent = Color3.fromRGB(180, 108, 255), accent2 = Color3.fromRGB(240, 120, 210) },
-	frost = {
-		bg = Color3.fromRGB(12, 19, 27),
-		panel = Color3.fromRGB(17, 27, 38),
-		card = Color3.fromRGB(27, 42, 58),
-		stroke = Color3.fromRGB(44, 68, 92),
-		accent = Color3.fromRGB(122, 205, 255),
-		accent2 = Color3.fromRGB(190, 232, 255),
+	cobalt = {
+		accent = Color3.fromRGB(56, 138, 255),
+		accent2 = Color3.fromRGB(72, 218, 255),
+		strokeGlow = Color3.fromRGB(56, 138, 255),
 	},
-	rose = { accent = Color3.fromRGB(255, 94, 126), accent2 = Color3.fromRGB(255, 154, 112) },
+	ember = {
+		accent = Color3.fromRGB(255, 115, 55),
+		accent2 = Color3.fromRGB(255, 190, 70),
+		strokeGlow = Color3.fromRGB(255, 120, 60),
+	},
+	amethyst = {
+		accent = Color3.fromRGB(175, 95, 255),
+		accent2 = Color3.fromRGB(235, 110, 210),
+		strokeGlow = Color3.fromRGB(175, 95, 255),
+	},
+	frost = {
+		bg = Color3.fromRGB(10, 16, 24),
+		panel = Color3.fromRGB(15, 24, 35),
+		card = Color3.fromRGB(22, 34, 49),
+		cardHover = Color3.fromRGB(29, 45, 65),
+		stroke = Color3.fromRGB(38, 58, 82),
+		accent = Color3.fromRGB(90, 195, 255),
+		accent2 = Color3.fromRGB(175, 235, 255),
+		strokeGlow = Color3.fromRGB(90, 195, 255),
+	},
+	rose = {
+		accent = Color3.fromRGB(255, 82, 122),
+		accent2 = Color3.fromRGB(255, 160, 120),
+		strokeGlow = Color3.fromRGB(255, 82, 122),
+	},
 }
 
 local function resolveTheme(theme)
@@ -67,10 +83,9 @@ local function resolveTheme(theme)
 end
 
 ------------------------------------------------------------------------
--- Helpers
+-- Utilities & Helpers
 ------------------------------------------------------------------------
 
--- Accepts camelCase or PascalCase property names.
 local function pick(props, key, default)
 	if props == nil then
 		return default
@@ -85,7 +100,6 @@ local function pick(props, key, default)
 	return v
 end
 
--- Inter where available, Gotham as the fallback.
 local WEIGHTS = {
 	Regular = { Enum.Font.Gotham, Enum.FontWeight.Regular },
 	Medium = { Enum.Font.GothamMedium, Enum.FontWeight.Medium },
@@ -131,10 +145,10 @@ local function create(class, props, children)
 	return inst
 end
 
-local function tween(inst, duration, goal, style)
+local function tween(inst, duration, goal, style, dir)
 	local t = TweenService:Create(
 		inst,
-		TweenInfo.new(duration or 0.18, style or Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+		TweenInfo.new(duration or 0.2, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out),
 		goal
 	)
 	t:Play()
@@ -153,10 +167,7 @@ local function assetId(icon)
 	if icon == nil or icon == 0 or icon == "" then
 		return nil
 	end
-	if type(icon) == "number" then
-		return "rbxassetid://" .. tostring(icon)
-	end
-	if tonumber(icon) then
+	if type(icon) == "number" or tonumber(icon) then
 		return "rbxassetid://" .. tostring(icon)
 	end
 	return tostring(icon)
@@ -170,13 +181,24 @@ local function fire(fn, ...)
 	task.spawn(function()
 		local ok, err = pcall(fn, table.unpack(args, 1, args.n))
 		if not ok then
-			warn("[Lumen] callback error: " .. tostring(err))
+			warn("[Lumen] Callback error: " .. tostring(err))
 		end
 	end)
 end
 
 local function corner(parent, radius)
-	return create("UICorner", { CornerRadius = radius or UDim.new(0, 8), Parent = parent })
+	return create("UICorner", { CornerRadius = radius or UDim.new(0, 10), Parent = parent })
+end
+
+local function addStroke(parent, color, thickness, transparency)
+	local s = create("UIStroke", {
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Color = color or Color3.fromRGB(45, 50, 75),
+		Thickness = thickness or 1,
+		Transparency = transparency or 0.3,
+		Parent = parent,
+	})
+	return s
 end
 
 local function getGuiParent(gui)
@@ -186,8 +208,6 @@ local function getGuiParent(gui)
 		end
 		return nil
 	end)
-	-- A ScreenGui nested inside another ScreenGui (e.g. RobloxGui) never renders,
-	-- so only accept containers that are not LayerCollectors.
 	if ok and ui and not ui:IsA("LayerCollector") then
 		local okSet = pcall(function()
 			gui.Parent = ui
@@ -210,7 +230,7 @@ local function fsAvailable()
 end
 
 ------------------------------------------------------------------------
--- Theme binding
+-- Theme Dynamic Binding
 ------------------------------------------------------------------------
 
 local function bind(win, inst, prop, key)
@@ -224,32 +244,19 @@ local function bindGradient(win, grad, kind)
 		if kind == "accent" then
 			grad.Color = ColorSequence.new(t.accent, t.accent2)
 		else
-			grad.Color = ColorSequence.new(t.bg, t.bg:Lerp(t.accent, 0.1))
+			grad.Color = ColorSequence.new(t.bg, t.bg:Lerp(t.accent, 0.08))
 		end
 	end
 	apply()
 	table.insert(win._refreshers, apply)
 end
 
-local function hairline(win, parent, props)
-	local line = create("Frame", {
-		BorderSizePixel = 0,
-		BackgroundTransparency = 0.35,
-		AnchorPoint = props.AnchorPoint,
-		Position = props.Position,
-		Size = props.Size,
-		Parent = parent,
-	})
-	bind(win, line, "BackgroundColor3", "stroke")
-	return line
-end
-
 ------------------------------------------------------------------------
--- Rows (every element is a flat row with a hairline underneath)
+-- Elements: Modern Card Row Architecture
 ------------------------------------------------------------------------
 
-local ROW_H = 52
-local PAD = 12
+local ROW_H = 48
+local PAD = 14
 
 local function buildRow(win, props, height, rightPad, topH)
 	topH = topH or height
@@ -261,39 +268,63 @@ local function buildRow(win, props, height, rightPad, topH)
 		Name = name ~= "" and name or "Element",
 		Size = UDim2.new(1, 0, 0, height),
 		BorderSizePixel = 0,
-		BackgroundTransparency = 1,
+		BackgroundTransparency = 0,
 	})
 	bind(win, row, "BackgroundColor3", "card")
-	corner(row, UDim.new(0, 8))
-	local sep = hairline(win, row, {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, 0),
-		Size = UDim2.new(1, -2 * PAD, 0, 1),
-	})
+	corner(row, UDim.new(0, 9))
 
-	local leftPad = PAD + 2
+	local rowStroke = addStroke(row, win.theme.stroke, 1, 0.45)
+	bind(win, rowStroke, "Color", "stroke")
+
+	local leftPad = PAD
 	if icon then
+		local iconBg = create("Frame", {
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, PAD, 0, topH / 2),
+			Size = UDim2.fromOffset(26, 26),
+			BackgroundTransparency = 0.5,
+			BorderSizePixel = 0,
+			Parent = row,
+		})
+		bind(win, iconBg, "BackgroundColor3", "panel")
+		corner(iconBg, UDim.new(0, 6))
+
 		local img = create("ImageLabel", {
 			BackgroundTransparency = 1,
 			Image = icon,
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, PAD + 2, 0, topH / 2),
-			Size = UDim2.fromOffset(18, 18),
-			Parent = row,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(16, 16),
+			Parent = iconBg,
 		})
-		bind(win, img, "ImageColor3", "subtext")
-		leftPad = PAD + 2 + 28
+		bind(win, img, "ImageColor3", "accent")
+		leftPad = PAD + 34
 	end
+
+	local textContainer = create("Frame", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, leftPad, 0, topH / 2),
+		Size = UDim2.new(1, -(leftPad + rightPad), 0, 34),
+		Parent = row,
+	})
+	create("UIListLayout", {
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 2),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = textContainer,
+	})
 
 	local nameLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Text = name,
 		Weight = "Medium",
-		TextSize = 14,
+		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Size = UDim2.new(1, -(leftPad + rightPad), 0, 18),
-		Parent = row,
+		Size = UDim2.new(1, 0, 0, 16),
+		LayoutOrder = 1,
+		Parent = textContainer,
 	})
 	bind(win, nameLabel, "TextColor3", "text")
 
@@ -301,63 +332,67 @@ local function buildRow(win, props, height, rightPad, topH)
 		BackgroundTransparency = 1,
 		Text = desc and tostring(desc) or "",
 		Weight = "Regular",
-		TextSize = 12,
+		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Size = UDim2.new(1, -(leftPad + rightPad), 0, 14),
-		Parent = row,
+		Size = UDim2.new(1, 0, 0, 14),
+		Visible = desc ~= nil and desc ~= "",
+		LayoutOrder = 2,
+		Parent = textContainer,
 	})
 	bind(win, descLabel, "TextColor3", "subtext")
 
 	local overlay = create("Frame", {
 		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 0.45,
+		BackgroundTransparency = 0.35,
 		BorderSizePixel = 0,
 		Visible = false,
 		Active = true,
-		ZIndex = 10,
+		ZIndex = 8,
 		Parent = row,
 	})
 	bind(win, overlay, "BackgroundColor3", "bg")
-	corner(overlay, UDim.new(0, 8))
+	corner(overlay, UDim.new(0, 9))
 
-	local refs = { name = nameLabel, desc = descLabel, overlay = overlay, origDesc = descLabel.Text, sep = sep }
+	local refs = {
+		name = nameLabel,
+		desc = descLabel,
+		overlay = overlay,
+		stroke = rowStroke,
+		origDesc = descLabel.Text,
+	}
+
 	function refs.update()
 		if descLabel.Text ~= "" then
-			nameLabel.AnchorPoint = Vector2.new(0, 0)
-			nameLabel.Position = UDim2.new(0, leftPad, 0, topH / 2 - 18)
 			descLabel.Visible = true
-			descLabel.Position = UDim2.new(0, leftPad, 0, topH / 2 + 1)
 		else
-			nameLabel.AnchorPoint = Vector2.new(0, 0.5)
-			nameLabel.Position = UDim2.new(0, leftPad, 0, topH / 2)
 			descLabel.Visible = false
 		end
 	end
-	refs.update()
+
 	return row, refs
 end
 
--- Soft background that fades in under a row while it is hovered.
-local function hoverRow(row, hit, handle, onEnter, onLeave)
+-- Hover card illumination
+local function hoverRow(win, row, hit, handle, onEnter, onLeave)
 	hit.MouseEnter:Connect(function()
-		if handle.locked then
+		if handle and handle.locked then
 			return
 		end
-		tween(row, 0.18, { BackgroundTransparency = 0.55 })
+		tween(row, 0.2, { BackgroundColor3 = win.theme.cardHover })
 		if onEnter then
 			onEnter()
 		end
 	end)
 	hit.MouseLeave:Connect(function()
-		tween(row, 0.25, { BackgroundTransparency = 1 })
+		tween(row, 0.25, { BackgroundColor3 = win.theme.card })
 		if onLeave then
 			onLeave()
 		end
 	end)
 end
 
--- Adds reorder / lock / remove methods and registers the handle with its container.
+-- Reorder, lock, and layout helpers
 local function decorate(target, handle, row, refs)
 	handle._card = row
 	handle.locked = false
@@ -427,7 +462,6 @@ local function decorate(target, handle, row, refs)
 	end
 end
 
--- Value elements: flags + saved state.
 local function registerFlag(win, handle, props)
 	local key = pick(props, "flag") or tostring(pick(props, "name", "element"))
 	handle.flagKey = key
@@ -443,19 +477,20 @@ local function registerFlag(win, handle, props)
 	end
 end
 
--- A small raised pill used for values (slider readout, dropdown selection, button label).
 local function pillFrame(win, parent)
 	local pill = create("Frame", {
 		BorderSizePixel = 0,
 		Parent = parent,
 	})
-	bind(win, pill, "BackgroundColor3", "card")
+	bind(win, pill, "BackgroundColor3", "panel")
 	corner(pill, UDim.new(0, 7))
-	return pill
+	local stroke = addStroke(pill, win.theme.stroke, 1, 0.5)
+	bind(win, stroke, "Color", "stroke")
+	return pill, stroke
 end
 
 ------------------------------------------------------------------------
--- Containers (tabs and groups share these methods)
+-- Component Constructors
 ------------------------------------------------------------------------
 
 local addMethods
@@ -467,7 +502,7 @@ addMethods = function(target, win, holder, rowMode)
 
 	local function place(row, basis)
 		if target._rowMode then
-			row.Size = UDim2.new(0, basis or 170, 0, row.Size.Y.Offset)
+			row.Size = UDim2.new(0, basis or 180, 0, row.Size.Y.Offset)
 			create("UIFlexItem", { FlexMode = Enum.UIFlexMode.Fill, Parent = row })
 		end
 		row.Parent = target._holder
@@ -476,18 +511,19 @@ addMethods = function(target, win, holder, rowMode)
 	------------------------------------------------------------ Button
 	function target:CreateButton(props)
 		props = props or {}
-		local row, refs = buildRow(win, props, ROW_H, 104)
+		local row, refs = buildRow(win, props, ROW_H, 100)
 		local handle = {}
 
 		local pill = pillFrame(win, row)
 		pill.AnchorPoint = Vector2.new(1, 0.5)
-		pill.Position = UDim2.new(1, -PAD - 2, 0, ROW_H / 2)
-		pill.Size = UDim2.fromOffset(72, 28)
+		pill.Position = UDim2.new(1, -PAD, 0, ROW_H / 2)
+		pill.Size = UDim2.fromOffset(76, 28)
+
 		local label = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Text = tostring(pick(props, "buttonText", "Run")),
 			Weight = "Medium",
-			TextSize = 13,
+			TextSize = 12,
 			Size = UDim2.fromScale(1, 1),
 			Parent = pill,
 		})
@@ -497,23 +533,25 @@ addMethods = function(target, win, holder, rowMode)
 			BackgroundTransparency = 1,
 			Text = "",
 			Size = UDim2.fromScale(1, 1),
-			ZIndex = 2,
+			ZIndex = 3,
 			Parent = row,
 		})
-		hoverRow(row, hit, handle, function()
+
+		hoverRow(win, row, hit, handle, function()
 			tween(pill, 0.18, { BackgroundColor3 = win.theme.accent })
-			tween(label, 0.18, { TextColor3 = win.theme.bg })
+			tween(label, 0.18, { TextColor3 = Color3.fromRGB(255, 255, 255) })
 		end, function()
-			tween(pill, 0.22, { BackgroundColor3 = win.theme.card })
+			tween(pill, 0.22, { BackgroundColor3 = win.theme.panel })
 			tween(label, 0.22, { TextColor3 = win.theme.text })
 		end)
+
 		hit.MouseButton1Down:Connect(function()
 			if not handle.locked then
-				tween(pill, 0.08, { Size = UDim2.fromOffset(68, 26) })
+				tween(pill, 0.08, { Size = UDim2.fromOffset(72, 26) })
 			end
 		end)
 		hit.MouseButton1Up:Connect(function()
-			tween(pill, 0.2, { Size = UDim2.fromOffset(72, 28) }, Enum.EasingStyle.Back)
+			tween(pill, 0.2, { Size = UDim2.fromOffset(76, 28) }, Enum.EasingStyle.Back)
 		end)
 		hit.MouseButton1Click:Connect(function()
 			if handle.locked then
@@ -521,30 +559,34 @@ addMethods = function(target, win, holder, rowMode)
 			end
 			fire(pick(props, "callback"))
 		end)
+
 		place(row)
 		decorate(target, handle, row, refs)
 		return handle
 	end
 
-	------------------------------------------------------------ Toggle
+	------------------------------------------------------------ Toggle / Switch
 	function target:CreateToggle(props)
 		props = props or {}
-		local row, refs = buildRow(win, props, ROW_H, 72)
+		local row, refs = buildRow(win, props, ROW_H, 70)
 		local handle = { value = pick(props, "value", false) and true or false }
 		local cb = pick(props, "callback")
 
 		local track = create("Frame", {
 			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -PAD - 2, 0, ROW_H / 2),
+			Position = UDim2.new(1, -PAD, 0, ROW_H / 2),
 			Size = UDim2.fromOffset(40, 22),
 			BorderSizePixel = 0,
 			Parent = row,
 		})
 		corner(track, UDim.new(1, 0))
+
+		local trackStroke = addStroke(track, win.theme.stroke, 1, 0.6)
+
 		local knob = create("Frame", {
 			AnchorPoint = Vector2.new(0, 0.5),
 			Size = UDim2.fromOffset(16, 16),
-			BackgroundColor3 = Color3.new(1, 1, 1),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			BorderSizePixel = 0,
 			Parent = track,
 		})
@@ -552,13 +594,20 @@ addMethods = function(target, win, holder, rowMode)
 
 		local function visual(animate)
 			local t = animate and 0.22 or 0
+			local active = handle.value
 			tween(track, t, {
-				BackgroundColor3 = handle.value and win.theme.accent or win.theme.card:Lerp(win.theme.stroke, 0.6),
+				BackgroundColor3 = active and win.theme.accent or win.theme.panel,
+			}, Enum.EasingStyle.Quart)
+			tween(trackStroke, t, {
+				Color = active and win.theme.accent or win.theme.stroke,
+				Transparency = active and 0.2 or 0.6,
 			})
 			tween(knob, t, {
-				Position = handle.value and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
+				Position = active and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
+				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			}, Enum.EasingStyle.Back)
 		end
+
 		visual(false)
 		table.insert(win._refreshers, function()
 			visual(true)
@@ -577,10 +626,10 @@ addMethods = function(target, win, holder, rowMode)
 			BackgroundTransparency = 1,
 			Text = "",
 			Size = UDim2.fromScale(1, 1),
-			ZIndex = 2,
+			ZIndex = 3,
 			Parent = row,
 		})
-		hoverRow(row, hit, handle)
+		hoverRow(win, row, hit, handle)
 		hit.MouseButton1Click:Connect(function()
 			if handle.locked then
 				return
@@ -598,7 +647,7 @@ addMethods = function(target, win, holder, rowMode)
 	------------------------------------------------------------ Slider
 	function target:CreateSlider(props)
 		props = props or {}
-		local row, refs = buildRow(win, props, 78, 100, ROW_H)
+		local row, refs = buildRow(win, props, 72, 90, 42)
 		local range = pick(props, "range", { 0, 100 })
 		local minV, maxV = range[1] or 0, range[2] or 100
 		local inc = pick(props, "increment", 1)
@@ -611,13 +660,14 @@ addMethods = function(target, win, holder, rowMode)
 
 		local pill = pillFrame(win, row)
 		pill.AnchorPoint = Vector2.new(1, 0.5)
-		pill.Position = UDim2.new(1, -PAD - 2, 0, ROW_H / 2)
-		pill.Size = UDim2.new(0, 0, 0, 26)
+		pill.Position = UDim2.new(1, -PAD, 0, 22)
+		pill.Size = UDim2.new(0, 0, 0, 24)
 		pill.AutomaticSize = Enum.AutomaticSize.X
-		create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = pill })
+		create("UIPadding", { PaddingLeft = UDim.new(0, 9), PaddingRight = UDim.new(0, 9), Parent = pill })
+
 		local valueLabel = create("TextLabel", {
 			BackgroundTransparency = 1,
-			Weight = "Medium",
+			Weight = "SemiBold",
 			TextSize = 12,
 			Size = UDim2.new(0, 0, 1, 0),
 			AutomaticSize = Enum.AutomaticSize.X,
@@ -627,31 +677,35 @@ addMethods = function(target, win, holder, rowMode)
 
 		local track = create("Frame", {
 			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, PAD + 2, 0, 63),
-			Size = UDim2.new(1, -(2 * PAD + 4), 0, 4),
+			Position = UDim2.new(0, PAD, 0, 54),
+			Size = UDim2.new(1, -(2 * PAD), 0, 5),
 			BorderSizePixel = 0,
 			Parent = row,
 		})
-		bind(win, track, "BackgroundColor3", "card")
+		bind(win, track, "BackgroundColor3", "panel")
 		corner(track, UDim.new(1, 0))
+
 		local fill = create("Frame", {
 			Size = UDim2.fromScale(0, 1),
 			BorderSizePixel = 0,
-			BackgroundColor3 = Color3.new(1, 1, 1),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			Parent = track,
 		})
 		corner(fill, UDim.new(1, 0))
 		bindGradient(win, create("UIGradient", { Parent = fill }), "accent")
+
 		local knob = create("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0, 0, 0.5, 0),
-			Size = UDim2.fromOffset(12, 12),
-			BackgroundColor3 = Color3.new(1, 1, 1),
+			Size = UDim2.fromOffset(13, 13),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			BorderSizePixel = 0,
-			ZIndex = 2,
+			ZIndex = 3,
 			Parent = track,
 		})
 		corner(knob, UDim.new(1, 0))
+		local knobStroke = addStroke(knob, win.theme.accent, 2, 0)
+		bind(win, knobStroke, "Color", "accent")
 
 		local function snap(v)
 			v = clamp(v, minV, maxV)
@@ -662,6 +716,7 @@ addMethods = function(target, win, holder, rowMode)
 			end
 			return round(s)
 		end
+
 		local function show(v, t)
 			valueLabel.Text = tostring(v) .. suffix
 			local r = (maxV == minV) and 0 or (v - minV) / (maxV - minV)
@@ -683,7 +738,7 @@ addMethods = function(target, win, holder, rowMode)
 
 		local dragging = false
 		local function grow(big)
-			local s = big and 16 or 12
+			local s = big and 17 or 13
 			tween(knob, 0.15, { Size = UDim2.fromOffset(s, s) }, Enum.EasingStyle.Back)
 		end
 
@@ -692,7 +747,7 @@ addMethods = function(target, win, holder, rowMode)
 			local v = snap(minV + ratio * (maxV - minV))
 			if v ~= handle.value then
 				handle.value = v
-				show(v, 0.06)
+				show(v, 0.05)
 				win:_changed()
 				fire(cb, v, true)
 			end
@@ -701,10 +756,12 @@ addMethods = function(target, win, holder, rowMode)
 		local hit = create("TextButton", {
 			BackgroundTransparency = 1,
 			Text = "",
-			Position = UDim2.new(0, PAD, 0, 48),
-			Size = UDim2.new(1, -2 * PAD, 0, 30),
+			Position = UDim2.new(0, PAD, 0, 38),
+			Size = UDim2.new(1, -2 * PAD, 0, 32),
+			ZIndex = 4,
 			Parent = row,
 		})
+
 		hit.MouseEnter:Connect(function()
 			if not handle.locked then
 				grow(true)
@@ -753,7 +810,7 @@ addMethods = function(target, win, holder, rowMode)
 		local multi = pick(props, "multiSelect", false)
 		local cb = pick(props, "callback")
 		local placeholder = tostring(pick(props, "placeholder", "None"))
-		local row, refs = buildRow(win, props, ROW_H, 186)
+		local row, refs = buildRow(win, props, ROW_H, 180)
 
 		local options = {}
 		for _, o in ipairs(pick(props, "options", {})) do
@@ -766,24 +823,26 @@ addMethods = function(target, win, holder, rowMode)
 
 		local pill = pillFrame(win, row)
 		pill.AnchorPoint = Vector2.new(1, 0.5)
-		pill.Position = UDim2.new(1, -PAD - 2, 0, ROW_H / 2)
-		pill.Size = UDim2.fromOffset(164, 30)
+		pill.Position = UDim2.new(1, -PAD, 0, ROW_H / 2)
+		pill.Size = UDim2.fromOffset(160, 28)
+
 		local summary = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Weight = "Regular",
-			TextSize = 13,
+			TextSize = 12,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
-			Position = UDim2.new(0, 11, 0, 0),
-			Size = UDim2.new(1, -34, 1, 0),
+			Position = UDim2.new(0, 10, 0, 0),
+			Size = UDim2.new(1, -30, 1, 0),
 			Parent = pill,
 		})
 		bind(win, summary, "TextColor3", "text")
+
 		local chevron = create("TextLabel", {
 			BackgroundTransparency = 1,
-			Text = "▾",
-			Weight = "Medium",
-			TextSize = 13,
+			Text = "▼",
+			Weight = "Bold",
+			TextSize = 9,
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -9, 0.5, 0),
 			Size = UDim2.fromOffset(14, 14),
@@ -798,22 +857,24 @@ addMethods = function(target, win, holder, rowMode)
 			Visible = false,
 			Parent = row,
 		})
-		local box = create("TextBox", {
+
+		local searchBox = create("TextBox", {
 			Size = UDim2.new(1, 0, 0, 28),
 			Text = "",
-			PlaceholderText = "Search",
+			PlaceholderText = "Search options...",
 			ClearTextOnFocus = false,
 			Weight = "Regular",
-			TextSize = 13,
+			TextSize = 12,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			BorderSizePixel = 0,
 			Parent = panel,
 		})
-		bind(win, box, "BackgroundColor3", "card")
-		bind(win, box, "TextColor3", "text")
-		bind(win, box, "PlaceholderColor3", "subtext")
-		corner(box, UDim.new(0, 7))
-		create("UIPadding", { PaddingLeft = UDim.new(0, 10), Parent = box })
+		bind(win, searchBox, "BackgroundColor3", "panel")
+		bind(win, searchBox, "TextColor3", "text")
+		bind(win, searchBox, "PlaceholderColor3", "subtext")
+		corner(searchBox, UDim.new(0, 6))
+		addStroke(searchBox, win.theme.stroke, 1, 0.5)
+		create("UIPadding", { PaddingLeft = UDim.new(0, 10), Parent = searchBox })
 
 		local list = create("ScrollingFrame", {
 			BackgroundTransparency = 1,
@@ -825,7 +886,7 @@ addMethods = function(target, win, holder, rowMode)
 			CanvasSize = UDim2.new(),
 			Parent = panel,
 		})
-		create("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
+		create("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
 
 		local function isSelected(opt)
 			for _, v in ipairs(handle.value) do
@@ -847,7 +908,7 @@ addMethods = function(target, win, holder, rowMode)
 		local function refreshSummary()
 			if #handle.value == 0 then
 				summary.Text = placeholder
-				summary.TextTransparency = 0.4
+				summary.TextTransparency = 0.45
 			else
 				summary.Text = table.concat(handle.value, ", ")
 				summary.TextTransparency = 0
@@ -855,10 +916,10 @@ addMethods = function(target, win, holder, rowMode)
 		end
 
 		local function resize(visibleCount)
-			local listH = math.min(visibleCount * 30, 150)
+			local listH = math.min(visibleCount * 32, 140)
 			list.Size = UDim2.new(1, 0, 0, listH)
-			panel.Size = UDim2.new(1, -2 * PAD, 0, 34 + listH)
-			local h = open and (ROW_H + 34 + listH + 12) or ROW_H
+			panel.Size = UDim2.new(1, -2 * PAD, 0, 36 + listH)
+			local h = open and (ROW_H + 36 + listH + 10) or ROW_H
 			tween(row, 0.22, { Size = UDim2.new(row.Size.X.Scale, row.Size.X.Offset, 0, h) })
 		end
 
@@ -879,28 +940,41 @@ addMethods = function(target, win, holder, rowMode)
 						Size = UDim2.new(1, -4, 0, 28),
 						AutoButtonColor = false,
 						Text = opt,
-						Weight = selected and "Medium" or "Regular",
-						TextSize = 13,
+						Weight = selected and "SemiBold" or "Regular",
+						TextSize = 12,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						BorderSizePixel = 0,
-						BackgroundColor3 = selected and win.theme.accent or win.theme.card,
-						BackgroundTransparency = selected and 0.82 or 1,
-						TextColor3 = selected and win.theme.text or win.theme.subtext,
+						BackgroundColor3 = selected and win.theme.accent or win.theme.panel,
+						BackgroundTransparency = selected and 0.85 or 0.6,
+						TextColor3 = selected and win.theme.accent or win.theme.text,
 						LayoutOrder = count,
 						Parent = list,
 					})
-					corner(btn, UDim.new(0, 7))
+					corner(btn, UDim.new(0, 6))
 					create("UIPadding", { PaddingLeft = UDim.new(0, 10), Parent = btn })
+
+					local check = create("Frame", {
+						AnchorPoint = Vector2.new(1, 0.5),
+						Position = UDim2.new(1, -8, 0.5, 0),
+						Size = UDim2.fromOffset(6, 6),
+						BackgroundColor3 = win.theme.accent,
+						BorderSizePixel = 0,
+						Visible = selected,
+						Parent = btn,
+					})
+					corner(check, UDim.new(1, 0))
+
 					btn.MouseEnter:Connect(function()
 						if not selected then
-							tween(btn, 0.12, { BackgroundTransparency = 0.6, TextColor3 = win.theme.text })
+							tween(btn, 0.12, { BackgroundTransparency = 0.3, TextColor3 = win.theme.text })
 						end
 					end)
 					btn.MouseLeave:Connect(function()
 						if not selected then
-							tween(btn, 0.15, { BackgroundTransparency = 1, TextColor3 = win.theme.subtext })
+							tween(btn, 0.15, { BackgroundTransparency = 0.6, TextColor3 = win.theme.subtext })
 						end
 					end)
+
 					btn.MouseButton1Click:Connect(function()
 						if handle.locked then
 							return
@@ -923,7 +997,7 @@ addMethods = function(target, win, holder, rowMode)
 							commit({ opt }, false)
 							open = false
 							panel.Visible = false
-							chevron.Text = "▾"
+							tween(chevron, 0.2, { Rotation = 0 })
 							resize(0)
 						end
 					end)
@@ -1025,12 +1099,12 @@ addMethods = function(target, win, holder, rowMode)
 		handle._onLock = function()
 			open = false
 			panel.Visible = false
-			chevron.Text = "▾"
+			tween(chevron, 0.2, { Rotation = 0 })
 			resize(0)
 		end
 
-		box:GetPropertyChangedSignal("Text"):Connect(function()
-			search = box.Text
+		searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+			search = searchBox.Text
 			rebuild()
 		end)
 
@@ -1041,14 +1115,14 @@ addMethods = function(target, win, holder, rowMode)
 			ZIndex = 2,
 			Parent = row,
 		})
-		hoverRow(row, header, handle)
+		hoverRow(win, row, header, handle)
 		header.MouseButton1Click:Connect(function()
 			if handle.locked then
 				return
 			end
 			open = not open
 			panel.Visible = open
-			chevron.Text = open and "▴" or "▾"
+			tween(chevron, 0.2, { Rotation = open and 180 or 0 })
 			rebuild()
 		end)
 
@@ -1068,36 +1142,31 @@ addMethods = function(target, win, holder, rowMode)
 	------------------------------------------------------------ Input
 	function target:CreateInput(props)
 		props = props or {}
-		local row, refs = buildRow(win, props, ROW_H, 184)
+		local row, refs = buildRow(win, props, ROW_H, 180)
 		local numeric = pick(props, "numeric", false)
 		local cb = pick(props, "callback")
 		local handle = { value = tostring(pick(props, "value", "")) }
 
 		local box = create("TextBox", {
 			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -PAD - 2, 0, ROW_H / 2),
-			Size = UDim2.fromOffset(164, 30),
+			Position = UDim2.new(1, -PAD, 0, ROW_H / 2),
+			Size = UDim2.fromOffset(160, 28),
 			Text = handle.value,
-			PlaceholderText = tostring(pick(props, "placeholder", "")),
+			PlaceholderText = tostring(pick(props, "placeholder", "Type here...")),
 			ClearTextOnFocus = false,
 			Weight = "Regular",
-			TextSize = 13,
+			TextSize = 12,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			BorderSizePixel = 0,
 			Parent = row,
 		})
-		bind(win, box, "BackgroundColor3", "card")
+		bind(win, box, "BackgroundColor3", "panel")
 		bind(win, box, "TextColor3", "text")
 		bind(win, box, "PlaceholderColor3", "subtext")
-		corner(box, UDim.new(0, 7))
+		corner(box, UDim.new(0, 6))
 		create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = box })
-		local boxStroke = create("UIStroke", {
-			Thickness = 1,
-			Transparency = 1,
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-			Parent = box,
-		})
-		bind(win, boxStroke, "Color", "accent")
+		local boxStroke = addStroke(box, win.theme.stroke, 1, 0.4)
+		bind(win, boxStroke, "Color", "stroke")
 
 		function handle:Set(v, skip)
 			self.value = tostring(v)
@@ -1113,13 +1182,14 @@ addMethods = function(target, win, holder, rowMode)
 				box:ReleaseFocus()
 				return
 			end
-			tween(boxStroke, 0.18, { Transparency = 0.1 })
+			tween(boxStroke, 0.2, { Color = win.theme.accent, Transparency = 0.1 })
 			if pick(props, "clearOnFocus", false) then
 				box.Text = ""
 			end
 		end)
+
 		box.FocusLost:Connect(function()
-			tween(boxStroke, 0.22, { Transparency = 1 })
+			tween(boxStroke, 0.2, { Color = win.theme.stroke, Transparency = 0.4 })
 			if handle.locked then
 				box.Text = handle.value
 				return
@@ -1142,7 +1212,7 @@ addMethods = function(target, win, holder, rowMode)
 		return handle
 	end
 
-	------------------------------------------------------------ Text
+	------------------------------------------------------------ Text / Label
 	function target:CreateText(props)
 		props = props or {}
 		local row = create("Frame", {
@@ -1153,10 +1223,10 @@ addMethods = function(target, win, holder, rowMode)
 			BorderSizePixel = 0,
 		})
 		create("UIPadding", {
-			PaddingTop = UDim.new(0, 10),
-			PaddingBottom = UDim.new(0, 10),
-			PaddingLeft = UDim.new(0, PAD + 2),
-			PaddingRight = UDim.new(0, PAD + 2),
+			PaddingTop = UDim.new(0, 8),
+			PaddingBottom = UDim.new(0, 8),
+			PaddingLeft = UDim.new(0, PAD),
+			PaddingRight = UDim.new(0, PAD),
 			Parent = row,
 		})
 		create("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder, Parent = row })
@@ -1164,7 +1234,7 @@ addMethods = function(target, win, holder, rowMode)
 		local titleLabel = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Weight = "SemiBold",
-			TextSize = 14,
+			TextSize = 13,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Size = UDim2.new(1, 0, 0, 0),
@@ -1173,10 +1243,11 @@ addMethods = function(target, win, holder, rowMode)
 			Parent = row,
 		})
 		bind(win, titleLabel, "TextColor3", "text")
+
 		local bodyLabel = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Weight = "Regular",
-			TextSize = 13,
+			TextSize = 12,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Size = UDim2.new(1, 0, 0, 0),
@@ -1208,32 +1279,46 @@ addMethods = function(target, win, holder, rowMode)
 	function target:CreateDivider(props)
 		props = props or {}
 		local text = pick(props, "name", pick(props, "text"))
+		local h = pick(props, "height", 18)
 		local frame = create("Frame", {
 			Name = "Divider",
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, pick(props, "height", 20)),
+			Size = UDim2.new(1, 0, 0, h),
 		})
-		local line = hairline(win, frame, {
+
+		local line = create("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0.5, 0, 0.5, 0),
 			Size = UDim2.new(1, -2 * PAD, 0, 1),
+			BorderSizePixel = 0,
+			Parent = frame,
 		})
+		bind(win, line, "BackgroundColor3", "stroke")
+
 		if text and text ~= "" then
-			local label = create("TextLabel", {
+			local pill = create("Frame", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.fromScale(0.5, 0.5),
-				Size = UDim2.new(0, 0, 0, 16),
+				Size = UDim2.new(0, 0, 0, 18),
 				AutomaticSize = Enum.AutomaticSize.X,
-				Text = tostring(text),
-				Weight = "Medium",
-				TextSize = 12,
 				BorderSizePixel = 0,
 				Parent = frame,
 			})
-			create("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8), Parent = label })
+			bind(win, pill, "BackgroundColor3", "bg")
+			corner(pill, UDim.new(0, 4))
+			create("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8), Parent = pill })
+
+			local label = create("TextLabel", {
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				Text = tostring(text):upper(),
+				Weight = "Bold",
+				TextSize = 10,
+				Parent = pill,
+			})
 			bind(win, label, "TextColor3", "subtext")
-			bind(win, label, "BackgroundColor3", "bg")
 		end
+
 		local handle = {}
 		place(frame, 220)
 		decorate(target, handle, frame, nil)
@@ -1246,24 +1331,26 @@ addMethods = function(target, win, holder, rowMode)
 		local frame = create("Frame", {
 			Name = "Section",
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 38),
+			Size = UDim2.new(1, 0, 0, 32),
 		})
 		local label = create("TextLabel", {
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, PAD + 2, 1, -6),
-			Size = UDim2.new(1, -(2 * PAD + 4), 0, 18),
+			Position = UDim2.new(0, PAD, 1, -4),
+			Size = UDim2.new(1, -(2 * PAD), 0, 18),
 			Text = tostring(pick(props, "name", "")),
 			Weight = "SemiBold",
-			TextSize = 13,
+			TextSize = 12,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Parent = frame,
 		})
 		bind(win, label, "TextColor3", "accent")
+
 		local handle = {}
 		function handle:SetName(t)
 			label.Text = tostring(t)
 		end
+
 		place(frame, 220)
 		decorate(target, handle, frame, nil)
 		return handle
@@ -1281,7 +1368,7 @@ addMethods = function(target, win, holder, rowMode)
 			AutomaticSize = Enum.AutomaticSize.Y,
 		})
 		local layout = create("UIListLayout", {
-			Padding = UDim.new(0, row and 8 or 0),
+			Padding = UDim.new(0, 8),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 			Parent = frame,
 		})
@@ -1299,7 +1386,7 @@ addMethods = function(target, win, holder, rowMode)
 end
 
 ------------------------------------------------------------------------
--- Window
+-- Window Class
 ------------------------------------------------------------------------
 
 local Window = {}
@@ -1326,11 +1413,10 @@ function Window:_conn(c)
 	return c
 end
 
--- Slide the highlight under the active tab.
 function Window:_syncIndicator(instant)
 	local tab = self._activeTab
 	local ind, area = self._indicator, self._indicatorArea
-	if not tab or not ind then
+	if not tab or not ind or not area then
 		return
 	end
 	local btn = tab.button
@@ -1351,7 +1437,7 @@ function Window:_syncIndicator(instant)
 			ind.Size = size
 			ind.Visible = true
 		else
-			tween(ind, 0.32, { Position = pos, Size = size })
+			tween(ind, 0.3, { Position = pos, Size = size }, Enum.EasingStyle.Quart)
 		end
 	end)
 end
@@ -1470,7 +1556,7 @@ function Window:ChangeTheme(theme)
 	for i = #self._bindings, 1, -1 do
 		local b = self._bindings[i]
 		if b.inst:IsDescendantOf(self._gui) then
-			tween(b.inst, 0.35, { [b.prop] = self.theme[b.key] })
+			tween(b.inst, 0.3, { [b.prop] = self.theme[b.key] })
 		else
 			table.remove(self._bindings, i)
 		end
@@ -1485,9 +1571,9 @@ function Window:Show()
 	self._hidden = false
 	self._pill.Visible = false
 	self._main.Visible = true
-	self._scale.Scale = 0.95
+	self._scale.Scale = 0.94
 	self._main.GroupTransparency = 1
-	tween(self._scale, 0.3, { Scale = 1 })
+	tween(self._scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Quart)
 	tween(self._main, 0.25, { GroupTransparency = 0 })
 	self:_syncIndicator(true)
 end
@@ -1496,9 +1582,9 @@ function Window:Hide()
 	self._hideToken = (self._hideToken or 0) + 1
 	local token = self._hideToken
 	self._hidden = true
-	tween(self._scale, 0.2, { Scale = 0.95 })
+	tween(self._scale, 0.22, { Scale = 0.94 }, Enum.EasingStyle.Quart)
 	tween(self._main, 0.2, { GroupTransparency = 1 })
-	task.delay(0.21, function()
+	task.delay(0.22, function()
 		if token == self._hideToken and not self.unloaded then
 			self._main.Visible = false
 			self._pill.Visible = true
@@ -1518,12 +1604,12 @@ function Window:ToggleMinimise()
 	if self._minimised then
 		self._minimised = false
 		self._body.Visible = true
-		tween(self._main, 0.3, { Size = self._fullSize })
+		tween(self._main, 0.35, { Size = self._fullSize }, Enum.EasingStyle.Quart)
 	else
 		self._minimised = true
 		self._fullSize = self._main.Size
 		self._body.Visible = false
-		tween(self._main, 0.3, { Size = UDim2.new(self._fullSize.X.Scale, self._fullSize.X.Offset, 0, 56) })
+		tween(self._main, 0.35, { Size = UDim2.new(self._fullSize.X.Scale, self._fullSize.X.Offset, 0, 52) }, Enum.EasingStyle.Quart)
 	end
 end
 
@@ -1560,33 +1646,23 @@ function Window:SetProfile(text)
 	end
 end
 
-local function toastShell(win, class, parent)
-	local card = create(class, {
-		BorderSizePixel = 0,
-		GroupTransparency = 1,
-		Parent = parent,
-	})
-	bind(win, card, "BackgroundColor3", "card")
-	local stroke = create("UIStroke", {
-		Thickness = 1,
-		Transparency = 0.4,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = card,
-	})
-	bind(win, stroke, "Color", "stroke")
-	return card
-end
-
 function Window:Notify(props)
 	props = props or {}
 	local title = tostring(pick(props, "title", pick(props, "name", "Notification")))
 	local content = tostring(pick(props, "content", pick(props, "description", pick(props, "body", ""))))
 	local duration = pick(props, "duration", 4)
 
-	local card = toastShell(self, "CanvasGroup", self._notifHolder)
-	card.Size = UDim2.new(1, 0, 0, 0)
-	card.AutomaticSize = Enum.AutomaticSize.Y
-	corner(card, UDim.new(0, 12))
+	local card = create("CanvasGroup", {
+		BorderSizePixel = 0,
+		GroupTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Parent = self._notifHolder,
+	})
+	bind(self, card, "BackgroundColor3", "panel")
+	corner(card, UDim.new(0, 10))
+	addStroke(card, self.theme.stroke, 1, 0.3)
+
 	create("UIPadding", {
 		PaddingTop = UDim.new(0, 12),
 		PaddingBottom = UDim.new(0, 14),
@@ -1595,11 +1671,12 @@ function Window:Notify(props)
 		Parent = card,
 	})
 	create("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder, Parent = card })
+
 	local t = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Text = title,
 		Weight = "SemiBold",
-		TextSize = 14,
+		TextSize = 13,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Size = UDim2.new(1, 0, 0, 0),
@@ -1608,12 +1685,13 @@ function Window:Notify(props)
 		Parent = card,
 	})
 	bind(self, t, "TextColor3", "text")
+
 	if content ~= "" then
 		local c = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Text = content,
 			Weight = "Regular",
-			TextSize = 13,
+			TextSize = 12,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Size = UDim2.new(1, 0, 0, 0),
@@ -1623,10 +1701,11 @@ function Window:Notify(props)
 		})
 		bind(self, c, "TextColor3", "subtext")
 	end
+
 	local bar = create("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 0, 1, 0),
-		Size = UDim2.new(1, 0, 0, 2),
+		Position = UDim2.new(0, -14, 1, 14),
+		Size = UDim2.new(1, 28, 0, 2),
 		BorderSizePixel = 0,
 		Parent = card,
 	})
@@ -1634,10 +1713,11 @@ function Window:Notify(props)
 
 	tween(card, 0.3, { GroupTransparency = 0 })
 	tween(bar, duration, { Size = UDim2.new(0, 0, 0, 2) }, Enum.EasingStyle.Linear)
+
 	task.delay(duration, function()
 		if card.Parent then
-			tween(card, 0.3, { GroupTransparency = 1 })
-			task.delay(0.35, function()
+			tween(card, 0.25, { GroupTransparency = 1 })
+			task.delay(0.3, function()
 				card:Destroy()
 			end)
 		end
@@ -1649,16 +1729,23 @@ function Window:Toast(props)
 	local text = tostring(pick(props, "text", pick(props, "content", pick(props, "title", pick(props, "name", "")))))
 	local duration = pick(props, "duration", 2.5)
 
-	local toast = toastShell(self, "CanvasGroup", self._toastHolder)
-	toast.Size = UDim2.new(0, 0, 0, 36)
-	toast.AutomaticSize = Enum.AutomaticSize.X
+	local toast = create("CanvasGroup", {
+		BorderSizePixel = 0,
+		GroupTransparency = 1,
+		Size = UDim2.new(0, 0, 0, 32),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Parent = self._toastHolder,
+	})
+	bind(self, toast, "BackgroundColor3", "panel")
 	corner(toast, UDim.new(1, 0))
-	create("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18), Parent = toast })
+	addStroke(toast, self.theme.stroke, 1, 0.4)
+	create("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16), Parent = toast })
+
 	local label = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Text = text,
 		Weight = "Medium",
-		TextSize = 13,
+		TextSize = 12,
 		Size = UDim2.new(0, 0, 1, 0),
 		AutomaticSize = Enum.AutomaticSize.X,
 		Parent = toast,
@@ -1677,11 +1764,11 @@ function Window:Toast(props)
 end
 
 ------------------------------------------------------------------------
--- CreateWindow
+-- CreateWindow Core
 ------------------------------------------------------------------------
 
-local TOPBAR = 56
-local SIDEBAR = 204
+local TOPBAR = 52
+local SIDEBAR = 210
 
 function Lumen:CreateWindow(props)
 	props = props or {}
@@ -1701,6 +1788,7 @@ function Lumen:CreateWindow(props)
 		_hidden = false,
 		unloaded = false,
 	}, Window)
+
 	win.theme = resolveTheme(pick(props, "theme", "default"))
 	win.Flags = setmetatable({}, {
 		__index = function(_, k)
@@ -1711,7 +1799,6 @@ function Lumen:CreateWindow(props)
 		end,
 	})
 
-	-- Pre-read saved state so elements restore themselves as they are created.
 	if cfg and cfg.autoLoad and fsAvailable() then
 		local _, path = win:GetPath()
 		local ok, data = pcall(function()
@@ -1734,130 +1821,130 @@ function Lumen:CreateWindow(props)
 	getGuiParent(gui)
 	win._gui = gui
 
-	local width, height = 600, 440
+	local width, height = 580, 430
 	if sidebar then
-		width, height = 740, 480
+		width, height = 720, 470
 	end
 
-	------------------------------------------------------------ main frame
+	-- Master Window Frame
 	local main = create("CanvasGroup", {
 		Name = "Main",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0.5, -height / 2),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(width, height),
 		BorderSizePixel = 0,
 		GroupTransparency = 1,
 		Parent = gui,
 	})
 	bind(win, main, "BackgroundColor3", "bg")
-	corner(main, UDim.new(0, 16))
-	local mainStroke = create("UIStroke", {
-		Thickness = 1,
-		Transparency = 0.25,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = main,
-	})
+	corner(main, UDim.new(0, 14))
+
+	local mainStroke = addStroke(main, win.theme.stroke, 1.2, 0.3)
 	bind(win, mainStroke, "Color", "stroke")
-	local scale = create("UIScale", { Scale = 0.95, Parent = main })
+
+	local scale = create("UIScale", { Scale = 0.94, Parent = main })
 	win._main = main
 	win._scale = scale
 
-	------------------------------------------------------------ top bar
+	-- Top Bar
 	local topbar = create("Frame", {
 		Name = "TopBar",
 		Size = UDim2.new(1, 0, 0, TOPBAR),
 		BorderSizePixel = 0,
-		ZIndex = 3,
+		ZIndex = 4,
 		Parent = main,
 	})
 	bind(win, topbar, "BackgroundColor3", "panel")
-	hairline(win, topbar, {
+
+	local topDivider = create("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 0, 1, 0),
 		Size = UDim2.new(1, 0, 0, 1),
+		BorderSizePixel = 0,
+		Parent = topbar,
 	})
+	bind(win, topDivider, "BackgroundColor3", "stroke")
 
 	local titleIcon = assetId(pick(props, "icon"))
-	local titleLeft = 20
+	local titleLeft = 16
 	if titleIcon then
 		local img = create("ImageLabel", {
 			BackgroundTransparency = 1,
 			Image = titleIcon,
 			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 18, 0.5, 0),
-			Size = UDim2.fromOffset(24, 24),
+			Position = UDim2.new(0, 14, 0.5, 0),
+			Size = UDim2.fromOffset(20, 20),
 			Parent = topbar,
 		})
 		bind(win, img, "ImageColor3", "accent")
-		titleLeft = 50
+		titleLeft = 42
 	end
+
 	local subtitle = pick(props, "subtitle")
-	local titleWidth = sidebar and (SIDEBAR - titleLeft - 8) or 300
+	local titleWidth = sidebar and (SIDEBAR - titleLeft - 10) or 280
 	local titleLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Text = name,
-		Weight = "SemiBold",
-		TextSize = 15,
+		Weight = "Bold",
+		TextSize = 14,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Position = UDim2.new(0, titleLeft, 0, subtitle and 10 or 18),
-		Size = UDim2.new(0, titleWidth, 0, 18),
+		Position = UDim2.new(0, titleLeft, 0, subtitle and 9 or 17),
+		Size = UDim2.new(0, titleWidth, 0, 16),
 		Parent = topbar,
 	})
 	bind(win, titleLabel, "TextColor3", "text")
+
 	if subtitle then
 		local sub = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Text = tostring(subtitle),
 			Weight = "Regular",
-			TextSize = 12,
+			TextSize = 11,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
-			Position = UDim2.new(0, titleLeft, 0, 29),
+			Position = UDim2.new(0, titleLeft, 0, 26),
 			Size = UDim2.new(0, titleWidth, 0, 14),
 			Parent = topbar,
 		})
 		bind(win, sub, "TextColor3", "subtext")
 	end
 
+	-- Window Control Buttons
 	local function titleButton(text, xOffset, hoverColor, onClick)
 		local b = create("TextButton", {
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, xOffset, 0.5, 0),
-			Size = UDim2.fromOffset(30, 30),
+			Size = UDim2.fromOffset(26, 26),
 			Text = text,
-			Weight = "Medium",
-			TextSize = 16,
+			Weight = "Bold",
+			TextSize = 13,
 			AutoButtonColor = false,
 			BorderSizePixel = 0,
 			BackgroundTransparency = 1,
 			Parent = topbar,
 		})
 		bind(win, b, "TextColor3", "subtext")
-		corner(b, UDim.new(0, 8))
+		corner(b, UDim.new(0, 6))
+
 		b.MouseEnter:Connect(function()
-			if hoverColor then
-				b.BackgroundColor3 = hoverColor
-			else
-				b.BackgroundColor3 = win.theme.card
-			end
-			tween(b, 0.12, { BackgroundTransparency = 0 })
-			tween(b, 0.12, { TextColor3 = win.theme.text })
+			b.BackgroundColor3 = hoverColor or win.theme.cardHover
+			tween(b, 0.12, { BackgroundTransparency = 0, TextColor3 = Color3.fromRGB(255, 255, 255) })
 		end)
 		b.MouseLeave:Connect(function()
-			tween(b, 0.18, { BackgroundTransparency = 1 })
-			tween(b, 0.18, { TextColor3 = win.theme.subtext })
+			tween(b, 0.18, { BackgroundTransparency = 1, TextColor3 = win.theme.subtext })
 		end)
 		b.MouseButton1Click:Connect(onClick)
 	end
-	titleButton("×", -14, Color3.fromRGB(190, 62, 78), function()
+
+	titleButton("✕", -12, Color3.fromRGB(225, 60, 80), function()
 		win:Hide()
 	end)
-	titleButton("–", -48, nil, function()
+	titleButton("—", -42, nil, function()
 		win:ToggleMinimise()
 	end)
 
-	-- Dragging (top bar)
+	-- Smooth Dragging System
 	local dragging, dragStart, startPos = false, nil, nil
 	topbar.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1871,14 +1958,15 @@ function Lumen:CreateWindow(props)
 			end)
 		end
 	end)
+
 	win:_conn(UserInputService.InputChanged:Connect(function(input)
 		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			local d = input.Position - dragStart
-			main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+			local delta = input.Position - dragStart
+			main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
 	end))
 
-	------------------------------------------------------------ body
+	-- Main Body Container
 	local body = create("Frame", {
 		Name = "Body",
 		BackgroundTransparency = 1,
@@ -1889,6 +1977,7 @@ function Lumen:CreateWindow(props)
 	})
 	win._body = body
 
+	-- Fluid Active Tab Indicator
 	local indicator = create("Frame", {
 		Name = "Indicator",
 		BorderSizePixel = 0,
@@ -1896,10 +1985,12 @@ function Lumen:CreateWindow(props)
 		ZIndex = 1,
 	})
 	bind(win, indicator, "BackgroundColor3", "card")
-	corner(indicator, UDim.new(0, 9))
+	corner(indicator, UDim.new(0, 8))
+	addStroke(indicator, win.theme.stroke, 1, 0.5)
 	win._indicator = indicator
 
 	local tabHolder, pageParent, titleOfPage
+
 	if sidebar then
 		local rail = create("Frame", {
 			Name = "Sidebar",
@@ -1908,26 +1999,31 @@ function Lumen:CreateWindow(props)
 			Parent = body,
 		})
 		bind(win, rail, "BackgroundColor3", "panel")
-		hairline(win, rail, {
+
+		local railDivider = create("Frame", {
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.new(1, 0, 0, 0),
 			Size = UDim2.new(0, 1, 1, 0),
+			BorderSizePixel = 0,
+			Parent = rail,
 		})
+		bind(win, railDivider, "BackgroundColor3", "stroke")
 
 		local area = create("Frame", {
 			BackgroundTransparency = 1,
 			ClipsDescendants = true,
-			Position = UDim2.new(0, 10, 0, 12),
-			Size = UDim2.new(1, -21, 1, -84),
+			Position = UDim2.new(0, 10, 0, 10),
+			Size = UDim2.new(1, -20, 1, -78),
 			Parent = rail,
 		})
 		indicator.Parent = area
 		win._indicatorArea = area
-		-- thin accent notch on the highlight
+
+		-- Accent notch marker on sliding pill
 		local notch = create("Frame", {
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, 4, 0.5, 0),
-			Size = UDim2.fromOffset(3, 16),
+			Size = UDim2.fromOffset(3, 14),
 			BorderSizePixel = 0,
 			Parent = indicator,
 		})
@@ -1944,49 +2040,56 @@ function Lumen:CreateWindow(props)
 			ZIndex = 2,
 			Parent = area,
 		})
-		create("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = railList })
+		create("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder, Parent = railList })
 		tabHolder = railList
 
-		-- profile
+		-- Profile Area
 		local profile = create("Frame", {
 			AnchorPoint = Vector2.new(0, 1),
 			Position = UDim2.new(0, 0, 1, 0),
-			Size = UDim2.new(1, -1, 0, 60),
+			Size = UDim2.new(1, -1, 0, 58),
 			BackgroundTransparency = 1,
 			Parent = rail,
 		})
-		hairline(win, profile, {
+		local profileDivider = create("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0),
 			Position = UDim2.new(0.5, 0, 0, 0),
 			Size = UDim2.new(1, -20, 0, 1),
+			BorderSizePixel = 0,
+			Parent = profile,
 		})
+		bind(win, profileDivider, "BackgroundColor3", "stroke")
+
 		local avatar = create("ImageLabel", {
-			BackgroundTransparency = 1,
+			BackgroundTransparency = 0,
 			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 14, 0.5, 0),
-			Size = UDim2.fromOffset(32, 32),
+			Position = UDim2.new(0, 12, 0.5, 0),
+			Size = UDim2.fromOffset(34, 34),
 			Parent = profile,
 		})
 		bind(win, avatar, "BackgroundColor3", "card")
-		avatar.BackgroundTransparency = 0
 		corner(avatar, UDim.new(1, 0))
+		addStroke(avatar, win.theme.stroke, 1, 0.4)
+
 		local lp = Players.LocalPlayer
 		if lp then
 			avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. lp.UserId .. "&w=48&h=48"
 		end
+
 		local hasProfile = pick(props, "profile") ~= nil
 		local pname = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Text = lp and lp.DisplayName or "Player",
-			Weight = "Medium",
-			TextSize = 13,
+			Weight = "SemiBold",
+			TextSize = 12,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
-			Position = UDim2.new(0, 54, 0, hasProfile and 14 or 22),
-			Size = UDim2.new(1, -66, 0, 16),
+			Position = UDim2.new(0, 54, 0, hasProfile and 13 or 21),
+			Size = UDim2.new(1, -64, 0, 16),
 			Parent = profile,
 		})
 		bind(win, pname, "TextColor3", "text")
+
 		local pline = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Text = tostring(pick(props, "profile", "")),
@@ -1995,14 +2098,14 @@ function Lumen:CreateWindow(props)
 			TextSize = 11,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
-			Position = UDim2.new(0, 54, 0, 31),
-			Size = UDim2.new(1, -66, 0, 14),
+			Position = UDim2.new(0, 54, 0, 29),
+			Size = UDim2.new(1, -64, 0, 14),
 			Parent = profile,
 		})
 		bind(win, pline, "TextColor3", "subtext")
 		win._profileLabel = pline
 
-		-- content
+		-- Pages Content View
 		local content = create("Frame", {
 			Name = "Content",
 			BackgroundTransparency = 1,
@@ -2013,34 +2116,41 @@ function Lumen:CreateWindow(props)
 		titleOfPage = create("TextLabel", {
 			BackgroundTransparency = 1,
 			Text = "",
-			Weight = "SemiBold",
-			TextSize = 22,
+			Weight = "Bold",
+			TextSize = 18,
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.new(0, 26, 0, 16),
-			Size = UDim2.new(1, -52, 0, 28),
+			Position = UDim2.new(0, 20, 0, 14),
+			Size = UDim2.new(1, -40, 0, 24),
 			Parent = content,
 		})
 		bind(win, titleOfPage, "TextColor3", "text")
+
 		pageParent = create("Frame", {
 			Name = "Pages",
 			BackgroundTransparency = 1,
-			Position = UDim2.new(0, 0, 0, 56),
-			Size = UDim2.new(1, 0, 1, -56),
+			Position = UDim2.new(0, 0, 0, 48),
+			Size = UDim2.new(1, 0, 1, -48),
 			Parent = content,
 		})
 	else
+		-- Top TabBar Layout
 		local tabbar = create("Frame", {
 			Name = "TabBar",
-			Size = UDim2.new(1, 0, 0, 48),
+			Size = UDim2.new(1, 0, 0, 42),
 			BorderSizePixel = 0,
 			Parent = body,
 		})
 		bind(win, tabbar, "BackgroundColor3", "panel")
-		hairline(win, tabbar, {
+
+		local tabDivider = create("Frame", {
 			AnchorPoint = Vector2.new(0, 1),
 			Position = UDim2.new(0, 0, 1, 0),
 			Size = UDim2.new(1, 0, 0, 1),
+			BorderSizePixel = 0,
+			Parent = tabbar,
 		})
+		bind(win, tabDivider, "BackgroundColor3", "stroke")
+
 		local area = create("Frame", {
 			BackgroundTransparency = 1,
 			Position = UDim2.new(0, 12, 0, 0),
@@ -2049,6 +2159,7 @@ function Lumen:CreateWindow(props)
 		})
 		indicator.Parent = area
 		win._indicatorArea = area
+
 		local list = create("Frame", {
 			BackgroundTransparency = 1,
 			Size = UDim2.new(0, 0, 1, 0),
@@ -2058,7 +2169,7 @@ function Lumen:CreateWindow(props)
 		})
 		create("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
-			Padding = UDim.new(0, 2),
+			Padding = UDim.new(0, 4),
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
 			Parent = list,
@@ -2068,22 +2179,22 @@ function Lumen:CreateWindow(props)
 		pageParent = create("Frame", {
 			Name = "Pages",
 			BackgroundTransparency = 1,
-			Position = UDim2.new(0, 0, 0, 48),
-			Size = UDim2.new(1, 0, 1, -48),
+			Position = UDim2.new(0, 0, 0, 42),
+			Size = UDim2.new(1, 0, 1, -42),
 			Parent = body,
 		})
 	end
 
-	------------------------------------------------------------ collapsed pill
+	-- Collapsed Floating Pill
 	local showName = tostring(pick(props, "showName", name))
 	local pillBtn = create("TextButton", {
 		Name = "Collapsed",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 14),
+		Position = UDim2.new(0.5, 0, 0, 16),
 		Size = UDim2.new(0, 0, 0, 36),
 		AutomaticSize = Enum.AutomaticSize.X,
 		Text = showName,
-		Weight = "Medium",
+		Weight = "SemiBold",
 		TextSize = 13,
 		AutoButtonColor = false,
 		BorderSizePixel = 0,
@@ -2093,16 +2204,11 @@ function Lumen:CreateWindow(props)
 	bind(win, pillBtn, "BackgroundColor3", "panel")
 	bind(win, pillBtn, "TextColor3", "text")
 	corner(pillBtn, UDim.new(1, 0))
-	create("UIPadding", { PaddingLeft = UDim.new(0, 20), PaddingRight = UDim.new(0, 20), Parent = pillBtn })
-	local pillStroke = create("UIStroke", {
-		Thickness = 1,
-		Transparency = 0.2,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = pillBtn,
-	})
-	bind(win, pillStroke, "Color", "stroke")
+	addStroke(pillBtn, win.theme.accent, 1, 0.4)
+	create("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18), Parent = pillBtn })
+
 	pillBtn.MouseEnter:Connect(function()
-		tween(pillBtn, 0.15, { BackgroundColor3 = win.theme.card })
+		tween(pillBtn, 0.15, { BackgroundColor3 = win.theme.cardHover })
 	end)
 	pillBtn.MouseLeave:Connect(function()
 		tween(pillBtn, 0.2, { BackgroundColor3 = win.theme.panel })
@@ -2112,13 +2218,13 @@ function Lumen:CreateWindow(props)
 	end)
 	win._pill = pillBtn
 
-	------------------------------------------------------------ notifications / toasts
+	-- Overlay Notifications & Toasts Holders
 	win._notifHolder = create("Frame", {
 		Name = "Notifications",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -16, 1, -16),
-		Size = UDim2.new(0, 300, 1, -32),
+		Size = UDim2.new(0, 280, 1, -32),
 		Parent = gui,
 	})
 	create("UIListLayout", {
@@ -2127,12 +2233,13 @@ function Lumen:CreateWindow(props)
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = win._notifHolder,
 	})
+
 	win._toastHolder = create("Frame", {
 		Name = "Toasts",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 14),
-		Size = UDim2.new(0, 320, 0, 0),
+		Position = UDim2.new(0.5, 0, 0, 16),
+		Size = UDim2.new(0, 300, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = gui,
 	})
@@ -2143,7 +2250,7 @@ function Lumen:CreateWindow(props)
 		Parent = win._toastHolder,
 	})
 
-	-- Optional toggle key
+	-- Keybind for visibility toggle
 	local toggleKey = pick(props, "toggleKey")
 	if toggleKey then
 		if type(toggleKey) == "string" then
@@ -2156,7 +2263,7 @@ function Lumen:CreateWindow(props)
 		end))
 	end
 
-	------------------------------------------------------------ sidebar sections
+	-- Sidebar Section Divider
 	function win:CreateSection(sprops)
 		if not sidebar then
 			return { Remove = function() end }
@@ -2165,18 +2272,18 @@ function Lumen:CreateWindow(props)
 		win._railOrder = (win._railOrder or 0) + 1
 		local label = create("TextLabel", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 28),
-			Text = tostring(pick(sprops, "name", "")),
-			Weight = "SemiBold",
-			TextSize = 12,
+			Size = UDim2.new(1, 0, 0, 26),
+			Text = tostring(pick(sprops, "name", "")):upper(),
+			Weight = "Bold",
+			TextSize = 10,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextYAlignment = Enum.TextYAlignment.Bottom,
 			LayoutOrder = win._railOrder,
 			Parent = tabHolder,
 		})
 		create("UIPadding", {
-			PaddingLeft = UDim.new(0, 12),
-			PaddingBottom = UDim.new(0, 5),
+			PaddingLeft = UDim.new(0, 10),
+			PaddingBottom = UDim.new(0, 4),
 			Parent = label,
 		})
 		bind(win, label, "TextColor3", "subtext")
@@ -2189,7 +2296,7 @@ function Lumen:CreateWindow(props)
 		}
 	end
 
-	------------------------------------------------------------ tabs
+	-- Tab Builder
 	function win:CreateTab(tprops)
 		tprops = tprops or {}
 		local tname = tostring(pick(tprops, "name", ""))
@@ -2207,15 +2314,15 @@ function Lumen:CreateWindow(props)
 				BackgroundTransparency = 1,
 				Text = tname,
 				Weight = "Medium",
-				TextSize = 14,
+				TextSize = 13,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				BorderSizePixel = 0,
-				Size = UDim2.new(1, 0, 0, 38),
+				Size = UDim2.new(1, 0, 0, 34),
 				LayoutOrder = win._railOrder,
 				ZIndex = 2,
 				Parent = tabHolder,
 			})
-			create("UIPadding", { PaddingLeft = UDim.new(0, ticon and 40 or 16), Parent = btn })
+			create("UIPadding", { PaddingLeft = UDim.new(0, ticon and 38 or 14), Parent = btn })
 		else
 			btn = create("TextButton", {
 				Name = tname,
@@ -2223,27 +2330,28 @@ function Lumen:CreateWindow(props)
 				BackgroundTransparency = 1,
 				Text = tname,
 				Weight = "Medium",
-				TextSize = 13,
+				TextSize = 12,
 				BorderSizePixel = 0,
-				Size = UDim2.new(0, 0, 0, 34),
+				Size = UDim2.new(0, 0, 0, 30),
 				AutomaticSize = Enum.AutomaticSize.X,
 				LayoutOrder = win._railOrder,
 				ZIndex = 2,
 				Parent = tabHolder,
 			})
 			create("UIPadding", {
-				PaddingLeft = UDim.new(0, ticon and 34 or 16),
-				PaddingRight = UDim.new(0, 16),
+				PaddingLeft = UDim.new(0, ticon and 32 or 14),
+				PaddingRight = UDim.new(0, 14),
 				Parent = btn,
 			})
 		end
+
 		if ticon then
 			iconImg = create("ImageLabel", {
 				BackgroundTransparency = 1,
 				Image = ticon,
 				AnchorPoint = Vector2.new(0, 0.5),
-				Position = UDim2.new(0, -24, 0.5, 0),
-				Size = UDim2.fromOffset(16, 16),
+				Position = UDim2.new(0, sidebar and 12 or 10, 0.5, 0),
+				Size = UDim2.fromOffset(15, 15),
 				Parent = btn,
 			})
 		end
@@ -2255,14 +2363,15 @@ function Lumen:CreateWindow(props)
 			Size = UDim2.fromScale(1, 1),
 			CanvasSize = UDim2.new(),
 			AutomaticCanvasSize = Enum.AutomaticSize.Y,
-			ScrollBarThickness = 3,
-			ScrollBarImageTransparency = 0.5,
+			ScrollBarThickness = 2,
+			ScrollBarImageTransparency = 0.4,
 			Visible = false,
 			Parent = pageParent,
 		})
 		bind(win, page, "ScrollBarImageColor3", "subtext")
-		create("UIListLayout", { Padding = UDim.new(0, 0), SortOrder = Enum.SortOrder.LayoutOrder, Parent = page })
-		local pad = sidebar and 14 or 12
+		create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = page })
+
+		local pad = sidebar and 16 or 14
 		create("UIPadding", {
 			PaddingTop = UDim.new(0, 4),
 			PaddingBottom = UDim.new(0, 20),
@@ -2354,8 +2463,8 @@ function Lumen:CreateWindow(props)
 		return tab
 	end
 
-	-- opening animation
-	tween(scale, 0.35, { Scale = 1 })
+	-- Smooth Entry Transition
+	tween(scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Quart)
 	tween(main, 0.3, { GroupTransparency = 0 })
 
 	return win
